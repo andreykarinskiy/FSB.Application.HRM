@@ -49,8 +49,23 @@ class UseCases:
         Редактирование кандидата.
         :param candidate: Изменяемый кандидат.
         :return: Измененный кандидат.
+        :raises ValueError: Если кандидат с указанным ID не найден или ID не указан.
         """
-        pass
+        if candidate.id is None:
+            raise ValueError("ID кандидата должен быть указан для редактирования")
+        
+        existing_candidate = self._repository.get_by_id(candidate.id)
+        if existing_candidate is None:
+            raise ValueError(f"Кандидат с ID {candidate.id} не найден")
+        
+        # Сохраняем ID и статус из существующего кандидата
+        updated_candidate = candidate.model_copy(update={
+            "id": existing_candidate.id,
+            "status": existing_candidate.status
+        })
+        
+        candidate_id = self._repository.insert_or_update(updated_candidate)
+        return self._repository.get_by_id(candidate_id)
 
 
     def delete_candidate(self, candidate_id: int) -> None:
