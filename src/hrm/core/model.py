@@ -10,17 +10,17 @@ class CandidateStatus(Enum):
     Стадия жизненного цикла кандидата в системе.
     """
 
-    REGISTERED = 1,
+    REGISTERED = 1
     """
     Новый кандидат.
     """
 
-    PROPOSED = 2,
+    PROPOSED = 2
     """
     Предложен на рассмотрение.
     """
 
-    APPROVED = 3,
+    APPROVED = 3
     """
     Утвержден на должность.
     """
@@ -36,7 +36,7 @@ class CandidateSex(Enum):
     Пол кандидата.
     """
 
-    MALE = 1,
+    MALE = 1
 
     FEMALE = 2
 
@@ -46,16 +46,18 @@ class Candidate(BaseModel):
     Кандидат в будущие сотрудники компании.
     """
 
-    id: int = Field()
+    id: int = Field(..., gt=0, description="ID кандидата")
 
-    first_name: str = Field()
+    first_name: str = Field(..., min_length=1, max_length=100, description="Имя")
 
-    last_name: str = Field()
+    last_name: str = Field(..., min_length=1, max_length=100, description="Фамилия")
 
-    birth_date: Optional[datetime] = Field()
+    phone: Optional[str] = Field(None, max_length=20, description="Контактный телефон")
 
-    sex: Optional[CandidateSex] = Field()
+    birth_date: Optional[datetime.datetime] = Field(None, description="Дата рождения")
 
-    status: CandidateStatus = Field()
+    sex: Optional[CandidateSex] = Field(None, description="Пол")
 
-    comments: str = Field()
+    status: CandidateStatus = Field(..., description="Статус кандидата")
+
+    comments: Optional[str] = Field(None, description="Комментарии")
