@@ -41,7 +41,7 @@ class UseCases:
         Возвращает список всех кандидатов.
         :return: Список кандидатов.
         """
-        pass
+        return self._repository.get_all()
 
 
     def edit_candidate(self, candidate: Candidate) -> Candidate:
@@ -57,8 +57,12 @@ class UseCases:
         """
         Удаление кандидата.
         :param candidate_id: Уникальный идентификатор.
+        :raises ValueError: Если кандидат с указанным ID не найден.
         """
-        pass
+        candidate = self._repository.get_by_id(candidate_id)
+        if candidate is None:
+            raise ValueError(f"Кандидат с ID {candidate_id} не найден")
+        self._repository.delete(candidate_id)
 
 
     def get_total_candidates(self) -> int:

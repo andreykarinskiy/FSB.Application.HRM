@@ -4,7 +4,8 @@ from typing import Optional
 
 import typer
 from rich.console import Console
-from rich.prompt import Prompt
+from rich.prompt import Prompt, Confirm
+from rich.table import Table
 
 from hrm.core.application import UseCases
 from hrm.core.model import Candidate, CandidateSex, CandidateStatus
@@ -194,6 +195,85 @@ def create_cli_app(use_cases: UseCases) -> typer.Typer:
             _format_candidate(candidate, console)
         except Exception as e:
             console.print(f"[red]Ошибка при получении кандидата:\n{str(e)}[/red]")
+            raise typer.Exit(1)
+
+    @app.command()
+    def list():
+        """
+        Выводит список всех кандидатов.
+        """
+        try:
+            candidates = use_cases.get_all_candidates()
+            
+            if not candidates:
+                console.print("[yellow]Кандидаты не найдены[/yellow]")
+                return
+            
+            table = Table(title="Список кандидатов", show_header=True, header_style="bold cyan")
+            table.add_column("ID", style="dim", width=6)
+            table.add_column("Имя", width=20)
+            table.add_column("Фамилия", width=20)
+            table.add_column("Телефон", width=15)
+            table.add_column("Дата рождения", width=12)
+            table.add_column("Пол", width=8)
+            table.add_column("Статус", width=12)
+            
+            for candidate in candidates:
+                phone = candidate.phone or "-"
+                birth_date = candidate.birth_date.strftime("%Y-%m-%d") if candidate.birth_date else "-"
+                sex = "М" if candidate.sex == CandidateSex.MALE else ("Ж" if candidate.sex == CandidateSex.FEMALE else "-")
+                status = candidate.status.name
+                
+                table.add_row(
+                    str(candidate.id),
+                    candidate.first_name,
+                    candidate.last_name,
+                    phone,
+                    birth_date,
+                    sex,
+                    status
+                )
+            
+            console.print(table)
+            console.print(f"\n[dim]Всего кандидатов: {len(candidates)}[/dim]")
+            
+        except Exception as e:
+            console.print(f"[red]Ошибка при получении списка кандидатов:\n{str(e)}[/red]")
+            raise typer.Exit(1)
+
+    @app.command()
+    def delete(
+        candidate_id: int = typer.Option(..., "--id", "-i", help="ID кандидата"),
+        force: bool = typer.Option(False, "--force", "-f", help="Удалить без подтверждения"),
+    ):
+        """
+        Удаляет кандидата по ID.
+        """
+        try:
+            # Получаем информацию о кандидате для отображения
+            candidate = use_cases.get_candidate(candidate_id)
+            
+            # Показываем информацию о кандидате
+            console.print(f"[yellow]Кандидат для удаления:[/yellow]")
+            console.print(f"ID: {candidate.id}")
+            console.print(f"Имя: {candidate.first_name} {candidate.last_name}")
+            console.print()
+            
+            # Запрашиваем подтверждение, если не указан флаг --force
+            if not force:
+                if not Confirm.ask("[red]Вы уверены, что хотите удалить этого кандидата?[/red]", default=False):
+                    console.print("[yellow]Удаление отменено[/yellow]")
+                    return
+            
+            # Удаляем кандидата
+            use_cases.delete_candidate(candidate_id)
+            console.print(f"[green]Кандидат [gray]{candidate.first_name} {candidate.last_name}[/gray] успешно удален[/green]")
+            
+        except ValueError as e:
+            console.print(f"[red]Ошибка: {str(e)}[/red]")
+            raise typer.Exit(1)
+        except Exception as e:
+            console.print(f"[red]Ошибка при удалении кандидата:\n{str(e)}[/red]")
             raise typer.Exit(1)
 
     return app
