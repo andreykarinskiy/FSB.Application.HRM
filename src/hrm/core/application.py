@@ -12,7 +12,7 @@ class UseCases:
         Регистрирует нового кандидата.
         :return: Идентификатор кандидата.
         """
-        pass
+        return 1
 
 
     def get_candidate(self, candidate_id: int) -> Candidate:
