@@ -46,7 +46,11 @@ class Candidate(BaseModel):
     Кандидат в будущие сотрудники компании.
     """
 
-    id: int = Field(..., gt=0, description="ID кандидата")
+    id: Optional[int] = Field(None, description="ID кандидата")
+    """
+    Уникальный идентификатор кандидата.
+    Если он равен None, то кандидат еще не зарегистрирован.
+    """
 
     first_name: str = Field(..., min_length=1, max_length=100, description="Имя")
 

@@ -3,6 +3,7 @@ def main():
     """Точка входа в CLI приложение"""
     pass
 
+
 if __name__ == "__main__":
     main()
 
