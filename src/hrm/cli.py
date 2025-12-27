@@ -35,6 +35,25 @@ def _parse_sex(sex: Optional[str], console: Console) -> Optional[CandidateSex]:
         raise typer.Exit(1)
 
 
+def _format_candidate(candidate: Candidate, console: Console) -> None:
+    """Форматирует и выводит информацию о кандидате"""
+    console.print(f"[bold cyan]Информация о кандидате[/bold cyan]")
+    console.print()
+    console.print(f"ID: {candidate.id}")
+    console.print(f"Имя: {candidate.first_name}")
+    console.print(f"Фамилия: {candidate.last_name}")
+    if candidate.phone:
+        console.print(f"Телефон: {candidate.phone}")
+    if candidate.birth_date:
+        console.print(f"Дата рождения: {candidate.birth_date.strftime('%Y-%m-%d')}")
+    if candidate.sex:
+        sex_name = "Мужской" if candidate.sex == CandidateSex.MALE else "Женский"
+        console.print(f"Пол: {sex_name}")
+    console.print(f"Статус: {candidate.status.name}")
+    if candidate.comments:
+        console.print(f"Комментарии: {candidate.comments}")
+
+
 def _register_candidate(
     use_cases: UseCases,
     console: Console,
@@ -162,6 +181,20 @@ def create_cli_app(use_cases: UseCases) -> typer.Typer:
             sex=sex,
             comments=comments,
         )
+
+    @app.command()
+    def get(
+        candidate_id: int = typer.Option(..., "--id", "-i", help="ID кандидата"),
+    ):
+        """
+        Получает информацию о кандидате по ID.
+        """
+        try:
+            candidate = use_cases.get_candidate(candidate_id)
+            _format_candidate(candidate, console)
+        except Exception as e:
+            console.print(f"[red]Ошибка при получении кандидата:\n{str(e)}[/red]")
+            raise typer.Exit(1)
 
     return app
 
