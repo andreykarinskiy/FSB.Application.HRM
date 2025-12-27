@@ -4,9 +4,68 @@ from typing import Optional
 
 import typer
 from rich.console import Console
+from rich.prompt import Prompt
 
 from hrm.core.application import UseCases
 from hrm.core.model import Candidate, CandidateSex, CandidateStatus
+
+
+def _parse_birth_date(birth_date: Optional[str], console: Console) -> Optional[datetime.datetime]:
+    """Парсит дату рождения из строки"""
+    if not birth_date:
+        return None
+    try:
+        return datetime.datetime.strptime(birth_date, "%Y-%m-%d")
+    except ValueError:
+        console.print(f"[red]Ошибка: Неверный формат даты. Используйте YYYY-MM-DD[/red]")
+        raise typer.Exit(1)
+
+
+def _parse_sex(sex: Optional[str], console: Console) -> Optional[CandidateSex]:
+    """Парсит пол из строки"""
+    if not sex:
+        return None
+    sex_upper = sex.upper()
+    if sex_upper == "M":
+        return CandidateSex.MALE
+    elif sex_upper == "F":
+        return CandidateSex.FEMALE
+    else:
+        console.print(f"[red]Ошибка: Неверное значение пола. Используйте M или F[/red]")
+        raise typer.Exit(1)
+
+
+def _register_candidate(
+    use_cases: UseCases,
+    console: Console,
+    first_name: str,
+    last_name: str,
+    phone: Optional[str] = None,
+    birth_date: Optional[str] = None,
+    sex: Optional[str] = None,
+    comments: Optional[str] = None,
+) -> None:
+    """Регистрирует кандидата с валидацией и обработкой ошибок"""
+    try:
+        parsed_birth_date = _parse_birth_date(birth_date, console)
+        parsed_sex = _parse_sex(sex, console)
+
+        candidate = Candidate(
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            birth_date=parsed_birth_date,
+            sex=parsed_sex,
+            status=CandidateStatus.REGISTERED,
+            comments=comments,
+        )
+
+        candidate_id = use_cases.register_candidate(candidate)
+        console.print(f"[green]Кандидат [gray]{first_name} {last_name}[/gray] успешно зарегистрирован с ID: {candidate_id}[/green]")
+
+    except Exception as e:
+        console.print(f"[red]Ошибка при регистрации кандидата: {str(e)}[/red]")
+        raise typer.Exit(1)
 
 
 def create_cli_app(use_cases: UseCases) -> typer.Typer:
@@ -33,43 +92,76 @@ def create_cli_app(use_cases: UseCases) -> typer.Typer:
         """
         Регистрирует нового кандидата в системе.
         """
-        try:
-            parsed_birth_date = None
-            if birth_date:
-                try:
-                    parsed_birth_date = datetime.datetime.strptime(birth_date, "%Y-%m-%d")
-                except ValueError:
-                    console.print(f"[red]Ошибка: Неверный формат даты. Используйте YYYY-MM-DD[/red]")
-                    raise typer.Exit(1)
+        _register_candidate(
+            use_cases=use_cases,
+            console=console,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            birth_date=birth_date,
+            sex=sex,
+            comments=comments,
+        )
 
-            parsed_sex = None
-            if sex:
-                sex_upper = sex.upper()
-                if sex_upper == "M":
-                    parsed_sex = CandidateSex.MALE
-                elif sex_upper == "F":
-                    parsed_sex = CandidateSex.FEMALE
-                else:
-                    console.print(f"[red]Ошибка: Неверное значение пола. Используйте M или F[/red]")
-                    raise typer.Exit(1)
+    @app.command()
+    def add_interactive():
+        """
+        Регистрирует нового кандидата в интерактивном режиме.
+        """
+        console.print("[bold cyan]Регистрация нового кандидата[/bold cyan]")
+        console.print()
 
-            candidate = Candidate(
-                first_name=first_name,
-                last_name=last_name,
-                phone=phone,
-                birth_date=parsed_birth_date,
-                sex=parsed_sex,
-                status=CandidateStatus.REGISTERED,
-                comments=comments,
-            )
+        # Обязательные поля
+        first_name = Prompt.ask("Имя", default="").strip()
+        while not first_name:
+            console.print("[red]Имя не может быть пустым[/red]")
+            first_name = Prompt.ask("Имя", default="").strip()
 
-            candidate_id = use_cases.register_candidate(candidate)
+        last_name = Prompt.ask("Фамилия", default="").strip()
+        while not last_name:
+            console.print("[red]Фамилия не может быть пустой[/red]")
+            last_name = Prompt.ask("Фамилия", default="").strip()
 
-            console.print(f"[green]Кандидат [gray]{first_name} {last_name}[/gray] успешно зарегистрирован с ID: {candidate_id}[/green]")
+        # Опциональные поля
+        phone_input = Prompt.ask("Телефон (необязательно, Enter для пропуска)", default="").strip()
+        phone = phone_input if phone_input else None
 
-        except Exception as e:
-            console.print(f"[red]Ошибка при регистрации кандидата: {str(e)}[/red]")
-            raise typer.Exit(1)
+        birth_date = None
+        while True:
+            date_str = Prompt.ask("Дата рождения (YYYY-MM-DD, Enter для пропуска)", default="").strip()
+            if not date_str:
+                break
+            try:
+                birth_date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+                break
+            except ValueError:
+                console.print("[red]Неверный формат даты. Используйте YYYY-MM-DD[/red]")
+
+        sex = None
+        while True:
+            sex_input = Prompt.ask("Пол (M/F, Enter для пропуска)", default="").strip().upper()
+            if not sex_input:
+                break
+            if sex_input in ("M", "F"):
+                sex = sex_input
+                break
+            else:
+                console.print("[red]Используйте M для мужского или F для женского пола[/red]")
+
+        comments_input = Prompt.ask("Комментарии (Enter для пропуска)", default="").strip()
+        comments = comments_input if comments_input else None
+
+        console.print()
+        _register_candidate(
+            use_cases=use_cases,
+            console=console,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            birth_date=birth_date.strftime("%Y-%m-%d") if birth_date else None,
+            sex=sex,
+            comments=comments,
+        )
 
     return app
 
