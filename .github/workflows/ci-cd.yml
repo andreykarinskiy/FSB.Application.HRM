@@ -95,13 +95,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ github.event_name }}" == "release" ]; then
-            gh release upload "${{ github.event.release.tag_name }}" ./dist/*.whl ./dist/*.tar.gz --repo ${{ github.repository }}
+            gh release upload "${{ github.event.release.tag_name }}" ./dist/*.whl ./dist/*.tar.gz README.md --repo ${{ github.repository }}
           else
             TAG_NAME=${GITHUB_REF#refs/tags/}
             gh release create "$TAG_NAME" \
               --title "Release $TAG_NAME" \
               --notes "Автоматический релиз версии $TAG_NAME" \
-              ./dist/*.whl ./dist/*.tar.gz \
+              ./dist/*.whl ./dist/*.tar.gz README.md \
               --repo ${{ github.repository }} || \
-            gh release upload "$TAG_NAME" ./dist/*.whl ./dist/*.tar.gz --repo ${{ github.repository }}
+            gh release upload "$TAG_NAME" ./dist/*.whl ./dist/*.tar.gz README.md --repo ${{ github.repository }}
           fi
