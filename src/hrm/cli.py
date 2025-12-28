@@ -445,6 +445,29 @@ def create_cli_app(use_cases: UseCases) -> typer.Typer:
             console.print(f"[red]Ошибка при редактировании кандидата:\n{str(e)}[/red]")
             raise typer.Exit(1)
 
+    @app.command()
+    def clear(
+        force: bool = typer.Option(False, "--force", "-f", help="Очистить без подтверждения"),
+    ):
+        """
+        Очищает репозиторий от всех данных.
+        Используется для приемочных тестов.
+        """
+        try:
+            # Запрашиваем подтверждение, если не указан флаг --force
+            if not force:
+                if not Confirm.ask("[red]Вы уверены, что хотите удалить всех кандидатов?[/red]", default=False):
+                    console.print("[yellow]Очистка отменена[/yellow]")
+                    return
+            
+            # Очищаем репозиторий
+            use_cases.clear_all_candidates()
+            console.print("[green]Репозиторий успешно очищен[/green]")
+            
+        except Exception as e:
+            console.print(f"[red]Ошибка при очистке репозитория:\n{str(e)}[/red]")
+            raise typer.Exit(1)
+
     return app
 
 

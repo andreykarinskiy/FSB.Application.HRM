@@ -1,6 +1,10 @@
 import subprocess
-import pexpect
 from typing import Dict, Any
+
+try:
+    import pexpect
+except ImportError:
+    pexpect = None  # pexpect не доступен на Windows
 
 class CliDriver:
     """
@@ -17,7 +21,9 @@ class CliDriver:
         Выполнение простой команды без интерактивного ввода
         """
         try:
-            cmd = [self.app_path, command] + (args or [])
+            # Разбиваем app_path на части, если он содержит пробелы (например, "python -m hrm")
+            app_path_parts = self.app_path.split()
+            cmd = app_path_parts + [command] + (args or [])
 
             result = subprocess.run(
                 cmd,
@@ -31,19 +37,27 @@ class CliDriver:
                 "success": True,
                 "stdout": result.stdout,
                 "stderr": result.stderr,
-                "return_code": result.returncode
+                "return_code": result.returncode,
+                "command": " ".join(cmd)
             }
 
         except subprocess.TimeoutExpired as e:
-            raise TimeoutError(f"Legacy application timed out after {self.app_timeout} seconds")
+            raise TimeoutError(f"Команда '{' '.join(cmd)}' превысила время ожидания ({self.app_timeout} секунд)")
 
         except subprocess.CalledProcessError as e:
+            error_message = f"Команда '{' '.join(cmd)}' завершилась с кодом {e.returncode}"
+            if e.stderr:
+                error_message += f"\nStderr: {e.stderr}"
+            if e.stdout:
+                error_message += f"\nStdout: {e.stdout}"
+            
             return {
                 "success": False,
-                "stdout": e.stdout,
-                "stderr": e.stderr,
+                "stdout": e.stdout or "",
+                "stderr": e.stderr or "",
                 "return_code": e.returncode,
-                "error": str(e)
+                "error": error_message,
+                "command": " ".join(cmd)
             }
 
     def execute_interactive(self, command_sequence: list) -> Dict[str, Any]:

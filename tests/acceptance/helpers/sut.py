@@ -19,3 +19,12 @@ class CliSystemFacade(SystemFacade):
     def __init__(self, driver: CliDriver):
         self.driver = driver
     
+    def execute(self, command: str, args: list = None):
+        """
+        Выполняет команду через драйвер.
+        :param command: Команда для выполнения
+        :param args: Аргументы команды
+        :return: Результат выполнения команды
+        """
+        return self.driver.execute(command, args)
+    

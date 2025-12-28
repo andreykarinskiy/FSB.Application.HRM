@@ -24,6 +24,10 @@ def step_impl(context):
 
 @when(u'я регистрирую кандидата со следующими данными:')
 def step_impl(context):
+    # Инициализируем список результатов регистрации, если его еще нет
+    if not hasattr(context, 'registration_results'):
+        context.registration_results = []
+    
     for row in context.table:
         candidate = Candidate(
             id=None,
@@ -37,10 +41,91 @@ def step_impl(context):
         )
         context.expected_candidates.append(candidate)
 
+        # Формируем аргументы для команды add
+        args = [
+            "--first-name", candidate.first_name,
+            "--last-name", candidate.last_name
+        ]
+        
+        # Добавляем опциональные параметры
+        if candidate.phone:
+            args.extend(["--phone", candidate.phone])
+        
+        if candidate.birth_date:
+            args.extend(["--birth-date", candidate.birth_date.strftime("%Y-%m-%d")])
+        
+        if candidate.sex:
+            sex_value = "M" if candidate.sex.value == 1 else "F"
+            args.extend(["--sex", sex_value])
+        
+        if candidate.comments:
+            args.extend(["--comments", candidate.comments])
+        
+        result = context.sut.execute("add", args)
+        
+        # Сохраняем результат регистрации вместе с данными кандидата
+        context.registration_results.append({
+            "candidate": candidate,
+            "result": result
+        })
+        
+        # Если регистрация не удалась, сразу выбрасываем исключение с подробной информацией
+        if not result.get("success", False):
+            error_details = []
+            if result.get("command"):
+                error_details.append(f"Команда: {result['command']}")
+            if result.get("stdout"):
+                error_details.append(f"Stdout: {result['stdout']}")
+            if result.get("stderr"):
+                error_details.append(f"Stderr: {result['stderr']}")
+            error_context = "\n".join(error_details) if error_details else "Детали ошибки отсутствуют"
+            
+            raise AssertionError(
+                f"Не удалось зарегистрировать кандидата {candidate.first_name} {candidate.last_name}.\n"
+                f"{result.get('error', 'Неизвестная ошибка')}\n"
+                f"{error_context}"
+            )
+
 
 @then(u'кандидат успешно зарегистрирован в системе')
 def step_impl(context):
-    pass
+    # Проверяем утверждение, что регистрация прошла успешно
+    assert hasattr(context, 'registration_results'), "Регистрация не была выполнена"
+    assert len(context.registration_results) > 0, "Нет результатов регистрации"
+    
+    for registration in context.registration_results:
+        candidate = registration["candidate"]
+        result = registration["result"]
+        
+        # Формируем информативное сообщение об ошибке
+        error_details = []
+        if result.get("command"):
+            error_details.append(f"Выполненная команда: {result['command']}")
+        if result.get("stdout"):
+            error_details.append(f"Stdout: {result['stdout']}")
+        if result.get("stderr"):
+            error_details.append(f"Stderr: {result['stderr']}")
+        error_context = "\n".join(error_details) if error_details else "Детали ошибки отсутствуют"
+        
+        # Проверяем, что команда выполнилась успешно
+        assert result["success"] is True, \
+            f"Регистрация кандидата {candidate.first_name} {candidate.last_name} не удалась.\n" \
+            f"{result.get('error', 'Неизвестная ошибка')}\n" \
+            f"{error_context}"
+        
+        assert result["return_code"] == 0, \
+            f"Команда регистрации вернула код {result['return_code']} вместо 0.\n" \
+            f"{error_context}"
+        
+        # Проверяем, что в выводе есть сообщение об успешной регистрации
+        assert "успешно зарегистрирован" in result["stdout"], \
+            f"В выводе отсутствует сообщение об успешной регистрации для {candidate.first_name} {candidate.last_name}.\n" \
+            f"Вывод команды:\n{result.get('stdout', '(пусто)')}\n" \
+            f"Ошибки:\n{result.get('stderr', '(нет ошибок)')}"
+        
+        assert candidate.first_name in result["stdout"] and candidate.last_name in result["stdout"], \
+            f"В выводе отсутствуют имя и фамилия кандидата {candidate.first_name} {candidate.last_name}.\n" \
+            f"Вывод команды:\n{result.get('stdout', '(пусто)')}"
 
 
 @then(u'кандидату присвоен уникальный идентификатор')

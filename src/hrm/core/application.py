@@ -79,6 +79,13 @@ class UseCases:
             raise ValueError(f"Кандидат с ID {candidate_id} не найден")
         self._repository.delete(candidate_id)
 
+    def clear_all_candidates(self) -> None:
+        """
+        Очищает репозиторий от всех данных.
+        Используется для приемочных тестов.
+        """
+        self._repository.clear_all()
+
 
     def get_total_candidates(self) -> int:
         """

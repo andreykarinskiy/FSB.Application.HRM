@@ -23,6 +23,11 @@ class CandidateRepository(ABC):
     def delete(self, candidate_id: int) -> None:
         pass
 
+    @abstractmethod
+    def clear_all(self) -> None:
+        """Очищает репозиторий от всех данных"""
+        pass
+
 
 class JsonCandidateRepository(CandidateRepository):
     """Репозиторий для хранения кандидатов в JSON-файле"""
@@ -50,6 +55,10 @@ class JsonCandidateRepository(CandidateRepository):
                             v["status"] = CandidateStatus(v["status"])
                         if "sex" in v and v["sex"] is not None:
                             v["sex"] = CandidateSex(v["sex"])
+                        # Преобразуем строку обратно в datetime
+                        if "birth_date" in v and v["birth_date"] is not None:
+                            from datetime import datetime
+                            v["birth_date"] = datetime.fromisoformat(v["birth_date"])
                         candidates_dict[int(k)] = Candidate(**v)
                     self._candidates = candidates_dict
                     self._next_id = data.get("next_id", 1)
@@ -73,6 +82,9 @@ class JsonCandidateRepository(CandidateRepository):
                 candidate_dict["status"] = candidate.status.value
             if candidate_dict.get("sex"):
                 candidate_dict["sex"] = candidate.sex.value
+            # Преобразуем datetime в строку для JSON
+            if candidate_dict.get("birth_date"):
+                candidate_dict["birth_date"] = candidate.birth_date.isoformat() if candidate.birth_date else None
             candidates_dict[str(candidate_id)] = candidate_dict
         
         data = {
@@ -116,3 +128,9 @@ class JsonCandidateRepository(CandidateRepository):
         if candidate_id in self._candidates:
             del self._candidates[candidate_id]
             self._save_data()
+
+    def clear_all(self) -> None:
+        """Очищает репозиторий от всех данных"""
+        self._candidates = {}
+        self._next_id = 1
+        self._save_data()
