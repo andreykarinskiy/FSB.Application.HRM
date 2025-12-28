@@ -9,12 +9,12 @@ class UseCases:
     Бизнес-логика приложения.
     """
     
-    def __init__(self, repository: CandidateRepository = None):
+    def __init__(self, repository: CandidateRepository):
         """
         Инициализация UseCases.
         :param repository: Репозиторий для работы с кандидатами. Если не указан, создается JsonCandidateRepository.
         """
-        self._repository = repository or JsonCandidateRepository()
+        self._repository = repository
 
     def register_candidate(self, candidate: Candidate) -> int:
         """

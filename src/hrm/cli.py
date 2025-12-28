@@ -9,6 +9,7 @@ from rich.table import Table
 
 from hrm.core.application import UseCases
 from hrm.core.model import Candidate, CandidateSex, CandidateStatus
+from hrm.core.persistence import SqliteCandidateRepository
 
 
 def _parse_birth_date(birth_date: Optional[str], console: Console) -> Optional[datetime.datetime]:
@@ -473,7 +474,8 @@ def create_cli_app(use_cases: UseCases) -> typer.Typer:
 
 def main():
     """Точка входа в CLI приложение - Composition Root"""
-    use_cases = UseCases()
+    repository = SqliteCandidateRepository()
+    use_cases = UseCases(repository)
     app = create_cli_app(use_cases)
     app()
 
