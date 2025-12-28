@@ -1,4 +1,6 @@
 import json
+import sqlite3
+import datetime
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Dict
@@ -27,6 +29,158 @@ class CandidateRepository(ABC):
     def clear_all(self) -> None:
         """Очищает репозиторий от всех данных"""
         pass
+
+
+class SqliteCandidateRepository(CandidateRepository):
+    """
+    Репозиторий для хранения кандидатов в DB Sqlite.
+    """
+    
+    def __init__(self, db_file: Path = None):
+        """
+        Инициализация репозитория.
+        :param db_file: Путь к файлу базы данных. Если не указан, используется ~/.hrm/candidates.db
+        """
+        self._db_file = db_file or (Path.home() / ".hrm" / "candidates.db")
+        self._init_database()
+    
+    def _init_database(self) -> None:
+        """Создает таблицу candidates, если её нет"""
+        self._db_file.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(self._db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS candidates (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    first_name TEXT NOT NULL,
+                    last_name TEXT NOT NULL,
+                    phone TEXT,
+                    birth_date TEXT,
+                    sex INTEGER,
+                    status INTEGER NOT NULL,
+                    comments TEXT
+                )
+            """)
+            conn.commit()
+    
+    def _row_to_candidate(self, row: tuple) -> Candidate:
+        """
+        Преобразует строку из БД в объект Candidate.
+        :param row: Кортеж (id, first_name, last_name, phone, birth_date, sex, status, comments)
+        :return: Объект Candidate
+        """
+        candidate_id, first_name, last_name, phone, birth_date_str, sex_value, status_value, comments = row
+        
+        # Преобразуем birth_date из строки в datetime
+        birth_date = None
+        if birth_date_str:
+            birth_date = datetime.datetime.fromisoformat(birth_date_str)
+        
+        # Преобразуем enum значения
+        sex = CandidateSex(sex_value) if sex_value is not None else None
+        status = CandidateStatus(status_value)
+        
+        return Candidate(
+            id=candidate_id,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            birth_date=birth_date,
+            sex=sex,
+            status=status,
+            comments=comments
+        )
+    
+    def get_all(self) -> List[Candidate]:
+        """Возвращает список всех кандидатов"""
+        with sqlite3.connect(self._db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, first_name, last_name, phone, birth_date, sex, status, comments
+                FROM candidates
+                ORDER BY id
+            """)
+            rows = cursor.fetchall()
+            return [self._row_to_candidate(row) for row in rows]
+    
+    def get_by_id(self, candidate_id: int) -> Candidate | None:
+        """Возвращает кандидата по ID или None, если не найден"""
+        with sqlite3.connect(self._db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, first_name, last_name, phone, birth_date, sex, status, comments
+                FROM candidates
+                WHERE id = ?
+            """, (candidate_id,))
+            row = cursor.fetchone()
+            if row:
+                return self._row_to_candidate(row)
+            return None
+    
+    def insert_or_update(self, candidate: Candidate) -> int:
+        """
+        Вставляет нового кандидата или обновляет существующего.
+        :param candidate: Кандидат для вставки/обновления
+        :return: ID кандидата
+        """
+        with sqlite3.connect(self._db_file) as conn:
+            cursor = conn.cursor()
+            
+            # Преобразуем данные для сохранения
+            birth_date_str = candidate.birth_date.isoformat() if candidate.birth_date else None
+            sex_value = candidate.sex.value if candidate.sex else None
+            status_value = candidate.status.value
+            
+            if candidate.id is None:
+                # Вставка нового кандидата
+                cursor.execute("""
+                    INSERT INTO candidates (first_name, last_name, phone, birth_date, sex, status, comments)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    candidate.first_name,
+                    candidate.last_name,
+                    candidate.phone,
+                    birth_date_str,
+                    sex_value,
+                    status_value,
+                    candidate.comments
+                ))
+                candidate_id = cursor.lastrowid
+            else:
+                # Обновление существующего кандидата
+                candidate_id = candidate.id
+                cursor.execute("""
+                    UPDATE candidates
+                    SET first_name = ?, last_name = ?, phone = ?, birth_date = ?, 
+                        sex = ?, status = ?, comments = ?
+                    WHERE id = ?
+                """, (
+                    candidate.first_name,
+                    candidate.last_name,
+                    candidate.phone,
+                    birth_date_str,
+                    sex_value,
+                    status_value,
+                    candidate.comments,
+                    candidate_id
+                ))
+            
+            conn.commit()
+            return candidate_id
+    
+    def delete(self, candidate_id: int) -> None:
+        """Удаляет кандидата по ID"""
+        with sqlite3.connect(self._db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM candidates WHERE id = ?", (candidate_id,))
+            conn.commit()
+    
+    def clear_all(self) -> None:
+        """Очищает репозиторий от всех данных"""
+        with sqlite3.connect(self._db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM candidates")
+            conn.commit()
 
 
 class JsonCandidateRepository(CandidateRepository):
