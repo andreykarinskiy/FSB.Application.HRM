@@ -13,9 +13,9 @@ install: ## Install project dependencies
 
 build: install ## Build project (install dependencies and package)
 
-test-acceptance: ## Run acceptance tests from tests/acceptance
+test: ## Run acceptance tests from tests/acceptance
 	@echo Running acceptance tests...
-	# TODO
+	behave tests/acceptance
 
 clean: ## Clean temporary files and cache
 	@echo Cleaning temporary files...
