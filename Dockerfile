@@ -13,16 +13,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Копирование файлов зависимостей для улучшения кэширования
+# Копирование файлов проекта
 COPY pyproject.toml ./
 COPY README.md ./
+COPY src/ ./src/
 
-# Установка зависимостей Python (кэшируется, если pyproject.toml не изменился)
+# Установка зависимостей и пакета
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -e .
-
-# Копирование исходного кода (отдельный слой для кэширования)
-COPY src/ ./src/
 
 # Создание директории для базы данных
 RUN mkdir -p /app/data
