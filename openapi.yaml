@@ -1,0 +1,115 @@
+openapi: 3.0.3
+info:
+  title: HR Management System API
+  description: API для управления кандидатами в HR системе
+  version: 0.1.1
+servers:
+  - url: http://localhost:8000
+    description: Локальный сервер разработки
+  - url: https://api.example.com
+    description: Продакшн сервер
+
+paths:
+  /candidates/{candidate_id}/accept:
+    post:
+      summary: Принять кандидата
+      description: |
+        Принимает кандидата в качестве нового сотрудника.
+        Меняет статус кандидата на APPROVED.
+      operationId: acceptCandidate
+      tags:
+        - Кандидаты
+      parameters:
+        - name: candidate_id
+          in: path
+          required: true
+          description: Уникальный идентификатор кандидата
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      responses:
+        '204':
+          description: Кандидат успешно принят
+        '400':
+          description: Ошибка валидации запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Некорректный идентификатор кандидата"
+        '404':
+          description: Кандидат не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Кандидат с ID 1 не найден"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Внутренняя ошибка сервера"
+
+  /candidates/{candidate_id}/reject:
+    post:
+      summary: Отклонить кандидата
+      description: |
+        Отклоняет кандидата.
+        Меняет статус кандидата на REJECTED.
+      operationId: rejectCandidate
+      tags:
+        - Кандидаты
+      parameters:
+        - name: candidate_id
+          in: path
+          required: true
+          description: Уникальный идентификатор кандидата
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      responses:
+        '204':
+          description: Кандидат успешно отклонен
+        '400':
+          description: Ошибка валидации запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Некорректный идентификатор кандидата"
+        '404':
+          description: Кандидат не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Кандидат с ID 1 не найден"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Внутренняя ошибка сервера"
+
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Описание ошибки
+          example: "Кандидат с ID 1 не найден"
