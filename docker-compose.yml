@@ -1,8 +1,12 @@
-version: '3.8'
-
 services:
   hrm:
-    image: ghcr.io/andreykarinskiy/esb-application-hrm:latest
+    # Локальная сборка образа для разработки
+    # Для использования готового образа из GHCR закомментируйте build и раскомментируйте image:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: esb-application-hrm:local
+    # image: ghcr.io/andreykarinskiy/esb-application-hrm:latest
     container_name: hrm-app
     volumes:
       # Монтируем named volume для сохранения данных базы данных
