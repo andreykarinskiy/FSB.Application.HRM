@@ -469,6 +469,18 @@ def create_cli_app(use_cases: UseCases) -> typer.Typer:
             console.print(f"[red]Ошибка при очистке репозитория:\n{str(e)}[/red]")
             raise typer.Exit(1)
 
+    @app.command()
+    def count():
+        """
+        Выводит общее количество кандидатов в системе.
+        """
+        try:
+            total = use_cases.get_total_candidates()
+            console.print(f"[bold cyan]Общее количество кандидатов: {total}[/bold cyan]")
+        except Exception as e:
+            console.print(f"[red]Ошибка при получении количества кандидатов:\n{str(e)}[/red]")
+            raise typer.Exit(1)
+
     return app
 
 

@@ -90,8 +90,9 @@ class UseCases:
     def get_total_candidates(self) -> int:
         """
         Возвращение общего количества кандидатов.
+        :return: Общее количество кандидатов в системе.
         """
-        pass
+        return len(self._repository.get_all())
 
 
     def accept_candidate(self, candidate_id: int) -> None:
