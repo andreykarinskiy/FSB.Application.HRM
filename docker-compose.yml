@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  hrm:
+    image: ghcr.io/andreykarinskiy/esb-application-hrm:latest
+    container_name: hrm-app
+    volumes:
+      # Монтируем named volume для сохранения данных базы данных
+      # Для использования локальной директории вместо named volume раскомментируйте следующую строку и закомментируйте hrm-data
+      - hrm-data:/app/data
+      # - ./data:/app/data
+    environment:
+      # Путь к файлу базы данных SQLite
+      - HRM_DB_PATH=/app/data/candidates.db
+    # По умолчанию показываем help, можно переопределить через команду
+    # Примеры команд:
+    #   command: ["list"]                    # Показать список всех кандидатов
+    #   command: ["add", "--first-name", "Иван", "--last-name", "Иванов"]  # Добавить кандидата
+    #   command: ["get", "--id", "1"]        # Получить информацию о кандидате с ID 1
+    command: ["--help"]
+    # Для интерактивного режима (add-interactive, edit-interactive)
+    stdin_open: true
+    tty: true
+
+volumes:
+  # Named volume для хранения данных базы данных
+  # Для просмотра данных: docker volume inspect esb-application-hrm_hrm-data
+  # Для удаления данных: docker volume rm esb-application-hrm_hrm-data
+  hrm-data:
+    driver: local

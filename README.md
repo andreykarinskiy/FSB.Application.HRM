@@ -33,6 +33,81 @@ pip install --user https://github.com/andreykarinskiy/FSB.Application.HRM/releas
 
 Замените `v0.1.0` на нужную версию в URL выше.
 
+## Docker
+
+Приложение доступно в виде Docker образа в GitHub Container Registry (GHCR).
+
+### Использование Docker образа
+
+#### Запуск через docker run
+
+```bash
+# Показать справку
+docker run --rm ghcr.io/andreykarinskiy/esb-application-hrm:latest --help
+
+# Показать список кандидатов
+docker run --rm \
+  -v hrm-data:/app/data \
+  -e HRM_DB_PATH=/app/data/candidates.db \
+  ghcr.io/andreykarinskiy/esb-application-hrm:latest list
+
+# Добавить кандидата
+docker run --rm -it \
+  -v hrm-data:/app/data \
+  -e HRM_DB_PATH=/app/data/candidates.db \
+  ghcr.io/andreykarinskiy/esb-application-hrm:latest add \
+  --first-name "Иван" --last-name "Иванов" \
+  --phone "+7-999-123-45-67" --birth-date "1990-01-15" --sex "M"
+
+# Использовать локальную директорию для базы данных
+docker run --rm \
+  -v $(pwd)/data:/app/data \
+  -e HRM_DB_PATH=/app/data/candidates.db \
+  ghcr.io/andreykarinskiy/esb-application-hrm:latest list
+```
+
+**Доступные теги:**
+- `latest` - последняя версия из ветки main
+- `develop` - последняя версия из ветки develop
+- `v*` - конкретные версии (например, `v0.1.1`)
+
+#### Использование docker-compose
+
+1. Создайте файл `docker-compose.yml` (уже включен в проект) или используйте существующий.
+
+2. Запустите команду:
+
+```bash
+# Показать справку (по умолчанию)
+docker-compose run --rm hrm
+
+# Показать список кандидатов
+docker-compose run --rm hrm list
+
+# Добавить кандидата
+docker-compose run --rm hrm add \
+  --first-name "Иван" --last-name "Иванов" \
+  --phone "+7-999-123-45-67" --birth-date "1990-01-15" --sex "M"
+
+# Интерактивный режим
+docker-compose run --rm hrm add-interactive
+```
+
+3. Данные сохраняются в Docker volume `hrm-data`. Для использования локальной директории измените `docker-compose.yml`:
+
+```yaml
+volumes:
+  # - hrm-data:/app/data  # Закомментируйте эту строку
+  - ./data:/app/data      # Раскомментируйте эту строку
+```
+
+**Доступ к образу в GHCR:**
+- [ghcr.io/andreykarinskiy/esb-application-hrm](https://github.com/andreykarinskiy/ESB.Application.HRM/pkgs/container/esb-application-hrm)
+
+### Переменные окружения
+
+- `HRM_DB_PATH` - путь к файлу базы данных SQLite (по умолчанию: `~/.hrm/candidates.db`)
+
 ## Запуск
 
 После установки приложение доступно через команду `hrm`:
@@ -138,7 +213,16 @@ hrm edit --id 1 --phone "+7-999-999-99-99"
 
 ## Хранение данных
 
-Приложение использует SQLite базу данных, которая создается автоматически при первом запуске. База данных хранится в файле `hrm.db` в текущей директории.
+Приложение использует SQLite базу данных, которая создается автоматически при первом запуске. 
+
+По умолчанию база данных хранится в файле `~/.hrm/candidates.db`. Путь к базе данных можно изменить через переменную окружения `HRM_DB_PATH`:
+
+```bash
+export HRM_DB_PATH=/path/to/your/database.db
+hrm list
+```
+
+В Docker контейнере по умолчанию используется путь `/app/data/candidates.db`, который можно настроить через переменную окружения `HRM_DB_PATH`.
 
 ## Технологический стек
 

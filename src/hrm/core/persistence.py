@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 import datetime
 from abc import ABC, abstractmethod
@@ -39,9 +40,17 @@ class SqliteCandidateRepository(CandidateRepository):
     def __init__(self, db_file: Path = None):
         """
         Инициализация репозитория.
-        :param db_file: Путь к файлу базы данных. Если не указан, используется ~/.hrm/candidates.db
+        :param db_file: Путь к файлу базы данных. Если не указан, используется переменная окружения HRM_DB_PATH,
+                        а при её отсутствии - ~/.hrm/candidates.db
         """
-        self._db_file = db_file or (Path.home() / ".hrm" / "candidates.db")
+        if db_file is None:
+            # Проверяем переменную окружения HRM_DB_PATH
+            env_db_path = os.getenv("HRM_DB_PATH")
+            if env_db_path:
+                db_file = Path(env_db_path)
+            else:
+                db_file = Path.home() / ".hrm" / "candidates.db"
+        self._db_file = db_file
         self._init_database()
     
     def _init_database(self) -> None:
