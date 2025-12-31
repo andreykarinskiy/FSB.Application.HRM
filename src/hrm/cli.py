@@ -481,6 +481,44 @@ def create_cli_app(use_cases: UseCases) -> typer.Typer:
             console.print(f"[red]Ошибка при получении количества кандидатов:\n{str(e)}[/red]")
             raise typer.Exit(1)
 
+    @app.command()
+    def accept(
+        candidate_id: int = typer.Option(..., "--id", "-i", help="ID кандидата"),
+    ):
+        """
+        Принимает кандидата в качестве нового сотрудника.
+        Меняет статус кандидата на APPROVED.
+        """
+        try:
+            candidate = use_cases.get_candidate(candidate_id)
+            use_cases.accept_candidate(candidate_id)
+            console.print(f"[green]Кандидат [gray]{candidate.first_name} {candidate.last_name}[/gray] успешно принят (статус: APPROVED)[/green]")
+        except ValueError as e:
+            console.print(f"[red]Ошибка: {str(e)}[/red]")
+            raise typer.Exit(1)
+        except Exception as e:
+            console.print(f"[red]Ошибка при принятии кандидата:\n{str(e)}[/red]")
+            raise typer.Exit(1)
+
+    @app.command()
+    def reject(
+        candidate_id: int = typer.Option(..., "--id", "-i", help="ID кандидата"),
+    ):
+        """
+        Отклоняет кандидата.
+        Меняет статус кандидата на REJECTED.
+        """
+        try:
+            candidate = use_cases.get_candidate(candidate_id)
+            use_cases.reject_candidate(candidate_id)
+            console.print(f"[green]Кандидат [gray]{candidate.first_name} {candidate.last_name}[/gray] отклонен (статус: REJECTED)[/green]")
+        except ValueError as e:
+            console.print(f"[red]Ошибка: {str(e)}[/red]")
+            raise typer.Exit(1)
+        except Exception as e:
+            console.print(f"[red]Ошибка при отклонении кандидата:\n{str(e)}[/red]")
+            raise typer.Exit(1)
+
     return app
 
 

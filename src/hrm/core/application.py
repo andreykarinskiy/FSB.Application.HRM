@@ -1,6 +1,6 @@
 from typing import List
 
-from hrm.core.model import Candidate
+from hrm.core.model import Candidate, CandidateStatus
 from hrm.core.persistence import CandidateRepository, JsonCandidateRepository
 
 
@@ -100,8 +100,14 @@ class UseCases:
         Принимает кандидата в качестве нового сотрудника.
         Меняет статус кандидата на APPROVED.
         :param candidate_id: Уникальный идентификатор кандидата.
+        :raises ValueError: Если кандидат с указанным ID не найден.
         """
-        pass
+        candidate = self._repository.get_by_id(candidate_id)
+        if candidate is None:
+            raise ValueError(f"Кандидат с ID {candidate_id} не найден")
+        
+        updated_candidate = candidate.model_copy(update={"status": CandidateStatus.APPROVED})
+        self._repository.insert_or_update(updated_candidate)
 
 
     def reject_candidate(self, candidate_id: int) -> None:
@@ -109,5 +115,11 @@ class UseCases:
         Отклоняет кандидата.
         Меняет статус кандидата на REJECTED.
         :param candidate_id: Уникальный идентификатор кандидата.
+        :raises ValueError: Если кандидат с указанным ID не найден.
         """
-        pass
+        candidate = self._repository.get_by_id(candidate_id)
+        if candidate is None:
+            raise ValueError(f"Кандидат с ID {candidate_id} не найден")
+        
+        updated_candidate = candidate.model_copy(update={"status": CandidateStatus.REJECTED})
+        self._repository.insert_or_update(updated_candidate)
