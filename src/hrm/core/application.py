@@ -1,3 +1,4 @@
+import datetime
 from typing import List
 
 from hrm.core.model import Candidate, CandidateStatus
@@ -58,10 +59,11 @@ class UseCases:
         if existing_candidate is None:
             raise ValueError(f"Кандидат с ID {candidate.id} не найден")
         
-        # Сохраняем ID и статус из существующего кандидата
+        # Сохраняем ID и статус из существующего кандидата, обновляем время изменения
         updated_candidate = candidate.model_copy(update={
             "id": existing_candidate.id,
-            "status": existing_candidate.status
+            "status": existing_candidate.status,
+            "updated_at": datetime.datetime.now()
         })
         
         candidate_id = self._repository.insert_or_update(updated_candidate)
@@ -106,7 +108,10 @@ class UseCases:
         if candidate is None:
             raise ValueError(f"Кандидат с ID {candidate_id} не найден")
         
-        updated_candidate = candidate.model_copy(update={"status": CandidateStatus.APPROVED})
+        updated_candidate = candidate.model_copy(update={
+            "status": CandidateStatus.APPROVED,
+            "updated_at": datetime.datetime.now()
+        })
         self._repository.insert_or_update(updated_candidate)
 
 
@@ -121,5 +126,8 @@ class UseCases:
         if candidate is None:
             raise ValueError(f"Кандидат с ID {candidate_id} не найден")
         
-        updated_candidate = candidate.model_copy(update={"status": CandidateStatus.REJECTED})
+        updated_candidate = candidate.model_copy(update={
+            "status": CandidateStatus.REJECTED,
+            "updated_at": datetime.datetime.now()
+        })
         self._repository.insert_or_update(updated_candidate)

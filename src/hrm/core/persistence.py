@@ -54,7 +54,7 @@ class SqliteCandidateRepository(CandidateRepository):
         self._init_database()
     
     def _init_database(self) -> None:
-        """Создает таблицу candidates, если её нет"""
+        """Создает таблицу candidates, если её нет, и выполняет миграции"""
         self._db_file.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self._db_file) as conn:
             cursor = conn.cursor()
@@ -70,20 +70,43 @@ class SqliteCandidateRepository(CandidateRepository):
                     comments TEXT
                 )
             """)
+            
+            # Проверяем наличие колонки updated_at и добавляем если отсутствует
+            cursor.execute("PRAGMA table_info(candidates)")
+            columns = [column[1] for column in cursor.fetchall()]
+            if "updated_at" not in columns:
+                cursor.execute("ALTER TABLE candidates ADD COLUMN updated_at TEXT")
+                # Устанавливаем текущее время для всех существующих записей
+                current_time = datetime.datetime.now().isoformat()
+                cursor.execute("UPDATE candidates SET updated_at = ? WHERE updated_at IS NULL", (current_time,))
+            
             conn.commit()
     
     def _row_to_candidate(self, row: tuple) -> Candidate:
         """
         Преобразует строку из БД в объект Candidate.
-        :param row: Кортеж (id, first_name, last_name, phone, birth_date, sex, status, comments)
+        :param row: Кортеж (id, first_name, last_name, phone, birth_date, sex, status, comments, updated_at)
         :return: Объект Candidate
         """
-        candidate_id, first_name, last_name, phone, birth_date_str, sex_value, status_value, comments = row
+        if len(row) == 9:
+            candidate_id, first_name, last_name, phone, birth_date_str, sex_value, status_value, comments, updated_at_str = row
+        else:
+            # Обратная совместимость со старыми записями без updated_at
+            candidate_id, first_name, last_name, phone, birth_date_str, sex_value, status_value, comments = row
+            updated_at_str = None
         
         # Преобразуем birth_date из строки в datetime
         birth_date = None
         if birth_date_str:
             birth_date = datetime.datetime.fromisoformat(birth_date_str)
+        
+        # Преобразуем updated_at из строки в datetime
+        updated_at = None
+        if updated_at_str:
+            updated_at = datetime.datetime.fromisoformat(updated_at_str)
+        else:
+            # Если updated_at отсутствует, устанавливаем текущее время
+            updated_at = datetime.datetime.now()
         
         # Преобразуем enum значения
         sex = CandidateSex(sex_value) if sex_value is not None else None
@@ -97,7 +120,8 @@ class SqliteCandidateRepository(CandidateRepository):
             birth_date=birth_date,
             sex=sex,
             status=status,
-            comments=comments
+            comments=comments,
+            updated_at=updated_at
         )
     
     def get_all(self) -> List[Candidate]:
@@ -105,7 +129,7 @@ class SqliteCandidateRepository(CandidateRepository):
         with sqlite3.connect(self._db_file) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, first_name, last_name, phone, birth_date, sex, status, comments
+                SELECT id, first_name, last_name, phone, birth_date, sex, status, comments, updated_at
                 FROM candidates
                 ORDER BY id
             """)
@@ -117,7 +141,7 @@ class SqliteCandidateRepository(CandidateRepository):
         with sqlite3.connect(self._db_file) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, first_name, last_name, phone, birth_date, sex, status, comments
+                SELECT id, first_name, last_name, phone, birth_date, sex, status, comments, updated_at
                 FROM candidates
                 WHERE id = ?
             """, (candidate_id,))
@@ -139,12 +163,13 @@ class SqliteCandidateRepository(CandidateRepository):
             birth_date_str = candidate.birth_date.isoformat() if candidate.birth_date else None
             sex_value = candidate.sex.value if candidate.sex else None
             status_value = candidate.status.value
+            updated_at_str = candidate.updated_at.isoformat() if candidate.updated_at else datetime.datetime.now().isoformat()
             
             if candidate.id is None:
                 # Вставка нового кандидата
                 cursor.execute("""
-                    INSERT INTO candidates (first_name, last_name, phone, birth_date, sex, status, comments)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO candidates (first_name, last_name, phone, birth_date, sex, status, comments, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     candidate.first_name,
                     candidate.last_name,
@@ -152,7 +177,8 @@ class SqliteCandidateRepository(CandidateRepository):
                     birth_date_str,
                     sex_value,
                     status_value,
-                    candidate.comments
+                    candidate.comments,
+                    updated_at_str
                 ))
                 candidate_id = cursor.lastrowid
             else:
@@ -161,7 +187,7 @@ class SqliteCandidateRepository(CandidateRepository):
                 cursor.execute("""
                     UPDATE candidates
                     SET first_name = ?, last_name = ?, phone = ?, birth_date = ?, 
-                        sex = ?, status = ?, comments = ?
+                        sex = ?, status = ?, comments = ?, updated_at = ?
                     WHERE id = ?
                 """, (
                     candidate.first_name,
@@ -171,6 +197,7 @@ class SqliteCandidateRepository(CandidateRepository):
                     sex_value,
                     status_value,
                     candidate.comments,
+                    updated_at_str,
                     candidate_id
                 ))
             
@@ -222,6 +249,13 @@ class JsonCandidateRepository(CandidateRepository):
                         if "birth_date" in v and v["birth_date"] is not None:
                             from datetime import datetime
                             v["birth_date"] = datetime.fromisoformat(v["birth_date"])
+                        # Преобразуем updated_at из строки в datetime
+                        if "updated_at" in v and v["updated_at"] is not None:
+                            from datetime import datetime
+                            v["updated_at"] = datetime.fromisoformat(v["updated_at"])
+                        else:
+                            # Если updated_at отсутствует, устанавливаем текущее время
+                            v["updated_at"] = datetime.datetime.now()
                         candidates_dict[int(k)] = Candidate(**v)
                     self._candidates = candidates_dict
                     self._next_id = data.get("next_id", 1)
@@ -248,6 +282,9 @@ class JsonCandidateRepository(CandidateRepository):
             # Преобразуем datetime в строку для JSON
             if candidate_dict.get("birth_date"):
                 candidate_dict["birth_date"] = candidate.birth_date.isoformat() if candidate.birth_date else None
+            # Преобразуем updated_at в строку для JSON
+            if candidate_dict.get("updated_at"):
+                candidate_dict["updated_at"] = candidate.updated_at.isoformat() if candidate.updated_at else None
             candidates_dict[str(candidate_id)] = candidate_dict
         
         data = {

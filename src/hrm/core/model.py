@@ -65,3 +65,8 @@ class Candidate(BaseModel):
     status: CandidateStatus = Field(..., description="Статус кандидата")
 
     comments: Optional[str] = Field(None, description="Комментарии")
+
+    updated_at: datetime.datetime = Field(
+        default_factory=datetime.datetime.now,
+        description="Время последнего изменения"
+    )

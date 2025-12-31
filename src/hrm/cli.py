@@ -54,6 +54,8 @@ def _format_candidate(candidate: Candidate, console: Console) -> None:
     console.print(f"Статус: {candidate.status.name}")
     if candidate.comments:
         console.print(f"Комментарии: {candidate.comments}")
+    if candidate.updated_at:
+        console.print(f"Последнее изменение: {candidate.updated_at.strftime('%Y-%m-%d %H:%M:%S')}")
 
 
 def _register_candidate(
